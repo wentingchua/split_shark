@@ -30,7 +30,8 @@ Split Shark is a Telegram bot designed to help groups track shared expenses and 
 ## Acknowledgements
 - Thanks to the [python-telegram-bot](https://python-telegram-bot.org/) library for making Telegram bot development easy.
 - Thanks to [FreeCurrencyAPI](https://freecurrencyapi.com/docs/#official-libraries) for providing currency exchange rates.
-- Thanks to Google Lab's [ImageFX](https://labs.google/fx/tools/image-fx) for generating Split Shark's display photo
+- Thanks to Google Lab's [ImageFX](https://labs.google/fx/tools/image-fx) for generating Split Shark's display photo.
+- Thanks to [PythonAnywhere](https://www.pythonanywhere.com/) for providing deployment service.
 
 ## Contact
 If you have any questions or feedback, feel free to reach out:
