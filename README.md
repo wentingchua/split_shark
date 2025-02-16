@@ -17,7 +17,7 @@ Split Shark is a Telegram bot designed to help groups track shared expenses and 
 ## How to Use
 
 1. Add the Bot to Your Group:
-2. Search for @split_shark_bot on Telegram and add it to your group. ==Add @split_shark_bot and **ALL** members as administrators==
+2. Search for @split_shark_bot on Telegram and add it to your group. *Note: Add @split_shark_bot and **ALL** members as administrators*
 3. Set the Group Currency: Use the `/setcurrency <currency_symbol>` command to set the currency for your group (e.g., `/setcurrency SGD`).
 4. Add Expenses: Use the `/add_expense` command to record a new expense. The bot will guide you through the process:
 5. Enter the expense name.
