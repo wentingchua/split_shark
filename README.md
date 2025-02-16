@@ -37,6 +37,5 @@ If you have any questions or feedback, feel free to reach out:
 - Email: wentingchua@gmail.com
 - Telegram: @went1ng
 
----
-Enjoy using Split Shark! 🦈
----
+### Enjoy using Split Shark! 🦈
+
