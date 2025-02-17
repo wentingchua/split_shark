@@ -1,4 +1,4 @@
-# Split Shark - Telegram Expense Tracker Bot
+# Split Shark 🦈 - Telegram Expense Tracker Bot
 
 Split Shark is a Telegram bot designed to help groups track shared expenses and calculate balances effortlessly. Whether you're splitting bills with friends, roommates, or colleagues, Split Shark makes it easy to keep track of who owes what. With its ability to convert between currencies, Split Shark is your ideal travel expense assistant, leaving you to enjoy your travels to the fullest!
 
