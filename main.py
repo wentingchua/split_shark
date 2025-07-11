@@ -1,6 +1,7 @@
 import json
 import os
 import requests
+import logging
 from typing import Final
 import sqlite3
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -12,6 +13,11 @@ TOKEN: Final = os.getenv("TOKEN")
 BOT_USERNAME: Final = '@split_shark_bot'
 API_KEY = os.getenv("FREE_CURRENCY_API_KEY")
 
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.DEBUG
+)
+logger = logging.getLogger(__name__)
 
 def get_exchange_rate(base_currency, target_currency):
     try:
@@ -184,19 +190,33 @@ async def add_expense_record_command(update: Update, context: ContextTypes.DEFAU
 
     # Load config to check if currency is set for this group
     config = load_config()
-    if not config.get("group_currencies", {}).get(group_id):
+    if group_id not in config["group_currencies"]:
         await update.message.reply_text("Please set a currency first using /setcurrency before adding expenses")
         return
     
+    # Initialize the state with both state and data
     user_states[user_id] = {
-        "state": "waiting_for_expense_name", 
-        "data": {"group_id": group_id}  # Store group_id in the user state
+        "state": "waiting_for_expense_name",
+        "data": {"group_id": group_id}
     }
+    
+    print(f"Initialized state for user {user_id}: {user_states[user_id]}")  # Debug print
     await update.message.reply_text("What is the name of the expense?")
 
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    logger.debug("handle_text was called!")
     user_id = update.effective_user.id
-    state = user_states.get(user_id, {}).get("state")
+    message_text = update.message.text
+    
+    logger.debug(f"Received message: {message_text} from user: {user_id}")
+    logger.debug(f"Current user_states: {user_states}")
+    
+    if user_id not in user_states:
+        logger.debug(f"No state found for user {user_id}")
+        return
+        
+    state = user_states[user_id].get("state")
+    logger.debug(f"Current state for user {user_id}: {state}")
 
     if state == "waiting_for_expense_name":
         await handle_expense_name(update, context)
@@ -206,33 +226,76 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_expense_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     group_id = str(update.message.chat_id)
-    members = await get_group_members(group_id, context)
     
-    if user_states.get(user_id, {}).get("state") != "waiting_for_expense_name":
-        return
+    print(f"Handling expense name for user {user_id}")  # Debug print
     
-    expense_name = update.message.text
-    user_states[user_id]["data"]["expense_name"] = expense_name
-    user_states[user_id]["state"] = "waiting_for_paid_by"
-    
-    await update.message.reply_text(
-        "Who paid for this expense?",
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton(member, callback_data=f"paid_by:{member}") for member in members]
-        ])
-    )
+    try:
+        # Get group members
+        members = await get_group_members(group_id, context)
+        
+        if not members:
+            await update.message.reply_text("No group members found. Please make sure the bot is an admin.")
+            return
+            
+        # Save expense name
+        expense_name = update.message.text
+        if not expense_name:
+            await update.message.reply_text("Please provide a valid expense name.")
+            return
+            
+        user_states[user_id]["data"]["expense_name"] = expense_name
+        
+        # Create keyboard
+        keyboard = []
+        # Put 2 members per row
+        for i in range(0, len(members), 2):
+            row = []
+            row.append(InlineKeyboardButton(members[i], callback_data=f"paid_by:{members[i]}"))
+            if i + 1 < len(members):  # If there's another member to add to the row
+                row.append(InlineKeyboardButton(members[i+1], callback_data=f"paid_by:{members[i+1]}"))
+            keyboard.append(row)
+        
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        # Update state
+        user_states[user_id]["state"] = "waiting_for_paid_by"
+        
+        print(f"Updated state for user {user_id}: {user_states[user_id]}")  # Debug print
+        
+        await update.message.reply_text(
+            f"Expense name: {expense_name}\nWho paid for this expense?",
+            reply_markup=reply_markup
+        )
+        
+    except Exception as e:
+        print(f"Error in handle_expense_name: {e}")  # Debug print
+        await update.message.reply_text("An error occurred. Please try again with /add_expense")
+        if user_id in user_states:
+            del user_states[user_id]
 
 async def handle_paid_by(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     user_id = update.effective_user.id
-    await query.answer()
+    
+    print(f"Handling paid_by for user {user_id}")  # Debug print
+    
+    try:
+        await query.answer()
 
-    if query.data.startswith("paid_by:"):
-        paid_by = query.data.split(":")[1]
-        user_states[user_id]["data"]["paid_by"] = paid_by
-        user_states[user_id]["state"] = "waiting_for_amount"
-
-        await query.edit_message_text(f"{paid_by} paid. How much was the expense?")
+        if query.data.startswith("paid_by:"):
+            paid_by = query.data.split(":")[1]
+            user_states[user_id]["data"]["paid_by"] = paid_by
+            user_states[user_id]["state"] = "waiting_for_amount"
+            
+            print(f"Updated state for user {user_id}: {user_states[user_id]}")  # Debug print
+            
+            await query.edit_message_text(f"Paid by: {paid_by}\nHow much was the expense?")
+            
+    except Exception as e:
+        print(f"Error in handle_paid_by: {e}")  # Debug print
+        await query.edit_message_text("An error occurred. Please try again with /add_expense")
+        if user_id in user_states:
+            del user_states[user_id]
 
 async def handle_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -515,7 +578,11 @@ if __name__ == '__main__':
     app.add_handler(CommandHandler('exchangebal', calculate_balance_ex_command))
 
     # Message handlers (for text inputs during states)
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
+    app.add_handler(MessageHandler(
+    filters.TEXT & ~filters.COMMAND & filters.ChatType.GROUP,
+    handle_text,
+    block=False
+))
 
     # CallbackQuery handlers (for inline keyboards)
     app.add_handler(CallbackQueryHandler(handle_paid_by, pattern='^paid_by:'))
